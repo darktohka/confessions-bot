@@ -18,7 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Build the binary for x86_64
-        run: ~/.cargo/bin/cross build --bin confessions-bot --profile release-lto --target x86_64-unknown-linux-gnu
+        run: RUSTFLAGS="-C target-feature=+crt-static" ~/.cargo/bin/cross build --bin confessions-bot --profile release-lto --target x86_64-unknown-linux-gnu
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -36,7 +36,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Build the binary for arm64
-        run: ~/.cargo/bin/cross build --bin confessions-bot --profile release-lto --target aarch64-unknown-linux-gnu
+        run: RUSTFLAGS="-C target-feature=+crt-static" ~/.cargo/bin/cross build --bin confessions-bot --profile release-lto --target aarch64-unknown-linux-gnu
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
