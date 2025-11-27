@@ -1,0 +1,45 @@
+name: Build binaries
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'
+  push:
+  workflow_dispatch:
+  repository_dispatch:
+
+jobs:
+  build-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Cross
+        run: |
+          curl -SsL https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cross
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Build the binary for x86_64
+        run: ~/.cargo/bin/cross build --bin confessions-bot --profile release-lto --target x86_64-unknown-linux-gnu
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-x86_64
+          path: |
+            target/x86_64-unknown-linux-gnu/release-lto/confessions-bot
+
+  build-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Cross
+        run: |
+          curl -SsL https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cross
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Build the binary for arm64
+        run: ~/.cargo/bin/cross build --bin confessions-bot --profile release-lto --target aarch64-unknown-linux-gnu
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-aarch64
+          path: |
+            target/aarch64-unknown-linux-gnu/release-lto/confessions-bot
