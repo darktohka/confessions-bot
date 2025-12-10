@@ -1,3 +1,4 @@
+mod button_stats;
 mod commands;
 mod config;
 mod logging;
@@ -25,7 +26,8 @@ use poise::{
     serenity_prelude::{self as serenity, CacheHttp, GatewayIntents},
 };
 
-use commands::{confess, confessembed, set_confession_thread};
+use button_stats::ButtonStats;
+use commands::{buttonstats, confess, confessembed, set_confession_thread};
 use config::Config;
 use utils::{CONFESS_BUTTON_ID, ConfessionModal};
 
@@ -34,6 +36,7 @@ use utils::{CONFESS_BUTTON_ID, ConfessionModal};
 /// User data, which is stored and accessible in all command invocations
 pub struct Data {
     pub config: Arc<RwLock<Config>>,
+    pub button_stats: Arc<RwLock<ButtonStats>>,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -107,20 +110,40 @@ async fn main() {
         }
     };
 
+    // Load button statistics
+    let button_stats = match ButtonStats::load().await {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("Failed to load button statistics: {}", e);
+            return;
+        }
+    };
+
     let token = config.discord_token.clone();
     let config_arc = Arc::new(RwLock::new(config));
+    let button_stats_arc = Arc::new(RwLock::new(button_stats));
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
                 set_confession_thread::set_confession_thread(),
                 confessembed::confessembed(),
                 confess::confess(),
+                buttonstats::buttonstats(),
             ],
             event_handler: |ctx, event, _framework, _data| {
                 Box::pin(async move {
                     if let serenity::FullEvent::InteractionCreate { interaction } = event {
                         if let Some(component) = interaction.as_message_component() {
                             if component.data.custom_id == CONFESS_BUTTON_ID {
+                                // Track button press
+                                {
+                                    let mut stats = _data.button_stats.write().await;
+                                    stats.increment(component.user.id);
+                                    if let Err(e) = stats.save().await {
+                                        log::error!("Failed to save button statistics: {:?}", e);
+                                    }
+                                }
+
                                 let custom_id = component.id.to_string();
                                 component
                                     .create_response(
@@ -168,7 +191,10 @@ async fn main() {
             Box::pin(async move {
                 log::info!("Registering commands globally...");
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data { config: config_arc })
+                Ok(Data { 
+                    config: config_arc,
+                    button_stats: button_stats_arc,
+                })
             })
         })
         .build();
