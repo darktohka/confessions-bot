@@ -27,7 +27,7 @@ When the bot runs for the first time, it will create a default `config.json` fil
 - **`discord_token`**: Replace `"YOUR_BOT_TOKEN_HERE"` with your actual Discord bot token.
 - **`confession_threads`**: This map is automatically managed by the bot and stores which channel ID is designated for new confession threads in each guild (server).
 
-The bot also creates and manages a `button_stats.json` file that tracks how many times each user has pressed the confession button. This file is automatically created and updated by the bot.
+The bot also creates and manages a `button_stats.toml` file that tracks how many times each user has pressed the confession button. This file is automatically created and updated by the bot.
 
 ### 2. Bot Commands
 

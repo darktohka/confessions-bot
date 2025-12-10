@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use poise::serenity_prelude::UserId;
 use tokio::fs;
 
-const BUTTON_STATS_FILE: &str = "button_stats.json";
+const BUTTON_STATS_FILE: &str = "button_stats.toml";
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ButtonStats {
@@ -13,7 +13,7 @@ pub struct ButtonStats {
 }
 
 impl ButtonStats {
-    /// Loads the button statistics from `button_stats.json`.
+    /// Loads the button statistics from `button_stats.toml`.
     /// If the file doesn't exist, creates a new empty stats file.
     pub async fn load() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let path = Path::new(BUTTON_STATS_FILE);
@@ -25,13 +25,13 @@ impl ButtonStats {
         }
 
         let content = fs::read_to_string(path).await?;
-        let stats: ButtonStats = serde_json::from_str(&content)?;
+        let stats: ButtonStats = toml::from_str(&content)?;
         Ok(stats)
     }
 
-    /// Saves the current button statistics to `button_stats.json`.
+    /// Saves the current button statistics to `button_stats.toml`.
     pub async fn save(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let content = serde_json::to_string_pretty(self)?;
+        let content = toml::to_string_pretty(self)?;
         fs::write(BUTTON_STATS_FILE, content).await?;
         Ok(())
     }
