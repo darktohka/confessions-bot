@@ -87,3 +87,125 @@ impl Config {
         self.user_cooldowns.insert((guild_id, user_id), timestamp);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_cooldown() {
+        let config = Config {
+            discord_token: "test".to_string(),
+            confession_threads: HashMap::new(),
+            cooldowns: HashMap::new(),
+            user_cooldowns: HashMap::new(),
+        };
+        
+        let guild_id = GuildId::new(12345);
+        assert_eq!(config.get_cooldown(guild_id), 3600);
+    }
+
+    #[test]
+    fn test_custom_cooldown() {
+        let mut config = Config {
+            discord_token: "test".to_string(),
+            confession_threads: HashMap::new(),
+            cooldowns: HashMap::new(),
+            user_cooldowns: HashMap::new(),
+        };
+        
+        let guild_id = GuildId::new(12345);
+        config.cooldowns.insert(guild_id, 7200);
+        assert_eq!(config.get_cooldown(guild_id), 7200);
+    }
+
+    #[test]
+    fn test_cooldown_check_no_prior_submission() {
+        let config = Config {
+            discord_token: "test".to_string(),
+            confession_threads: HashMap::new(),
+            cooldowns: HashMap::new(),
+            user_cooldowns: HashMap::new(),
+        };
+        
+        let guild_id = GuildId::new(12345);
+        let user_id = UserId::new(67890);
+        let current_time = 1000;
+        
+        assert_eq!(config.check_cooldown(guild_id, user_id, current_time), None);
+    }
+
+    #[test]
+    fn test_cooldown_check_within_cooldown() {
+        let mut config = Config {
+            discord_token: "test".to_string(),
+            confession_threads: HashMap::new(),
+            cooldowns: HashMap::new(),
+            user_cooldowns: HashMap::new(),
+        };
+        
+        let guild_id = GuildId::new(12345);
+        let user_id = UserId::new(67890);
+        config.cooldowns.insert(guild_id, 3600);
+        config.record_submission(guild_id, user_id, 1000);
+        
+        // 10 seconds later
+        let remaining = config.check_cooldown(guild_id, user_id, 1010);
+        assert_eq!(remaining, Some(3590));
+    }
+
+    #[test]
+    fn test_cooldown_check_after_cooldown() {
+        let mut config = Config {
+            discord_token: "test".to_string(),
+            confession_threads: HashMap::new(),
+            cooldowns: HashMap::new(),
+            user_cooldowns: HashMap::new(),
+        };
+        
+        let guild_id = GuildId::new(12345);
+        let user_id = UserId::new(67890);
+        config.cooldowns.insert(guild_id, 3600);
+        config.record_submission(guild_id, user_id, 1000);
+        
+        // 3600 seconds later (cooldown expired)
+        let remaining = config.check_cooldown(guild_id, user_id, 4600);
+        assert_eq!(remaining, None);
+    }
+
+    #[test]
+    fn test_zero_cooldown_disabled() {
+        let mut config = Config {
+            discord_token: "test".to_string(),
+            confession_threads: HashMap::new(),
+            cooldowns: HashMap::new(),
+            user_cooldowns: HashMap::new(),
+        };
+        
+        let guild_id = GuildId::new(12345);
+        let user_id = UserId::new(67890);
+        config.cooldowns.insert(guild_id, 0);
+        config.record_submission(guild_id, user_id, 1000);
+        
+        // Immediately after submission with 0 cooldown
+        let remaining = config.check_cooldown(guild_id, user_id, 1000);
+        assert_eq!(remaining, None);
+    }
+
+    #[test]
+    fn test_record_submission() {
+        let mut config = Config {
+            discord_token: "test".to_string(),
+            confession_threads: HashMap::new(),
+            cooldowns: HashMap::new(),
+            user_cooldowns: HashMap::new(),
+        };
+        
+        let guild_id = GuildId::new(12345);
+        let user_id = UserId::new(67890);
+        let timestamp = 1000;
+        
+        config.record_submission(guild_id, user_id, timestamp);
+        assert_eq!(config.user_cooldowns.get(&(guild_id, user_id)), Some(&timestamp));
+    }
+}
