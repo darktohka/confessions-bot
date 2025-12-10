@@ -178,18 +178,25 @@ pub async fn approve(
     };
 
     // Save the updated configuration (confession removed from pending)
-    {
+    let save_result = {
         let config = config_lock.read().await;
-        if let Err(e) = config.save().await {
-            log::error!("Failed to save configuration: {:?}", e);
-        }
-    }
+        config.save().await
+    };
 
-    ctx.say(format!(
-        "Confession `{}` has been approved and posted {}.",
-        confession_id, result
-    ))
-    .await?;
+    if let Err(e) = save_result {
+        log::error!("Failed to save configuration after posting confession: {:?}", e);
+        ctx.say(format!(
+            "Confession `{}` has been approved and posted {}, but failed to save configuration. The confession may appear in the pending list until the bot restarts: {}",
+            confession_id, result, e
+        ))
+        .await?;
+    } else {
+        ctx.say(format!(
+            "Confession `{}` has been approved and posted {}.",
+            confession_id, result
+        ))
+        .await?;
+    }
 
     Ok(())
 }
@@ -208,7 +215,7 @@ pub async fn reject(
     let config_lock = data.config.clone();
     
     // Remove the pending confession
-    let removed = {
+    let result = {
         let mut config = config_lock.write().await;
         let pending = config.pending_confessions.remove(&confession_id);
         
@@ -217,30 +224,41 @@ pub async fn reject(
                 // Save the configuration
                 if let Err(e) = config.save().await {
                     log::error!("Failed to save configuration: {:?}", e);
+                    // Put it back since save failed
+                    config.pending_confessions.insert(confession_id.clone(), pc);
+                    return Err(format!("Failed to save configuration after rejecting confession: {}", e).into());
                 }
-                true
+                Ok(())
             }
             Some(pc) => {
                 // Put it back if it's from a different guild
                 config.pending_confessions.insert(confession_id.clone(), pc);
-                false
+                Err("wrong_guild")
             }
-            None => false,
+            None => Err("not_found"),
         }
     };
 
-    if removed {
-        ctx.say(format!(
-            "Confession `{}` has been rejected and removed from the review queue.",
-            confession_id
-        ))
-        .await?;
-    } else {
-        ctx.say(format!(
-            "No pending confession found with ID: {}",
-            confession_id
-        ))
-        .await?;
+    match result {
+        Ok(()) => {
+            ctx.say(format!(
+                "Confession `{}` has been rejected and removed from the review queue.",
+                confession_id
+            ))
+            .await?;
+        }
+        Err("wrong_guild") => {
+            ctx.say("That confession ID belongs to a different guild.")
+                .await?;
+        }
+        Err("not_found") => {
+            ctx.say(format!(
+                "No pending confession found with ID: {}",
+                confession_id
+            ))
+            .await?;
+        }
+        Err(e) => return Err(e.into()),
     }
 
     Ok(())
