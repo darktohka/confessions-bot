@@ -25,7 +25,7 @@ use poise::{
     serenity_prelude::{self as serenity, CacheHttp, GatewayIntents},
 };
 
-use commands::{confess, confessembed, set_confession_thread};
+use commands::{blacklist, confess, confessembed, review_confession, set_confession_thread};
 use config::Config;
 use utils::{CONFESS_BUTTON_ID, ConfessionModal};
 
@@ -115,6 +115,8 @@ async fn main() {
                 set_confession_thread::set_confession_thread(),
                 confessembed::confessembed(),
                 confess::confess(),
+                blacklist::blacklist(),
+                review_confession::review_confession(),
             ],
             event_handler: |ctx, event, _framework, _data| {
                 Box::pin(async move {
