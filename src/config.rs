@@ -1,7 +1,7 @@
 use std::path::Path;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use poise::serenity_prelude::{ChannelId, GuildId};
+use poise::serenity_prelude::{ChannelId, GuildId, UserId};
 use tokio::fs;
 
 const CONFIG_FILE: &str = "config.json";
@@ -11,6 +11,16 @@ pub struct Config {
     pub discord_token: String,
     // Map of GuildId -> ChannelId (the thread where new confession threads are created)
     pub confession_threads: HashMap<GuildId, ChannelId>,
+    // Map of GuildId -> cooldown in seconds (default: 3600 seconds = 1 hour)
+    #[serde(default = "default_cooldowns")]
+    pub cooldowns: HashMap<GuildId, u64>,
+    // Map of (GuildId, UserId) -> timestamp of last confession
+    #[serde(skip)]
+    pub user_cooldowns: HashMap<(GuildId, UserId), i64>,
+}
+
+fn default_cooldowns() -> HashMap<GuildId, u64> {
+    HashMap::new()
 }
 
 impl Config {
@@ -23,6 +33,8 @@ impl Config {
             let default_config = Config {
                 discord_token: "YOUR_BOT_TOKEN_HERE".to_string(),
                 confession_threads: HashMap::new(),
+                cooldowns: HashMap::new(),
+                user_cooldowns: HashMap::new(),
             };
             default_config.save().await?;
             
@@ -31,7 +43,10 @@ impl Config {
         }
 
         let content = fs::read_to_string(path).await?;
-        let config: Config = serde_json::from_str(&content)?;
+        let mut config: Config = serde_json::from_str(&content)?;
+        
+        // Initialize user_cooldowns as it's skipped during deserialization
+        config.user_cooldowns = HashMap::new();
         
         if config.discord_token == "YOUR_BOT_TOKEN_HERE" {
             return Err("Please replace YOUR_BOT_TOKEN_HERE in config.json with your actual bot token.".into());
@@ -45,5 +60,30 @@ impl Config {
         let content = serde_json::to_string_pretty(self)?;
         fs::write(CONFIG_FILE, content).await?;
         Ok(())
+    }
+    
+    /// Gets the cooldown period for a guild in seconds. Returns 3600 (1 hour) by default.
+    pub fn get_cooldown(&self, guild_id: GuildId) -> u64 {
+        self.cooldowns.get(&guild_id).copied().unwrap_or(3600)
+    }
+    
+    /// Checks if a user is on cooldown. Returns None if not on cooldown,
+    /// or Some(seconds_remaining) if still on cooldown.
+    pub fn check_cooldown(&self, guild_id: GuildId, user_id: UserId, current_time: i64) -> Option<i64> {
+        let cooldown_seconds = self.get_cooldown(guild_id) as i64;
+        
+        if let Some(&last_submission) = self.user_cooldowns.get(&(guild_id, user_id)) {
+            let time_elapsed = current_time - last_submission;
+            if time_elapsed < cooldown_seconds {
+                return Some(cooldown_seconds - time_elapsed);
+            }
+        }
+        
+        None
+    }
+    
+    /// Records a confession submission time for a user.
+    pub fn record_submission(&mut self, guild_id: GuildId, user_id: UserId, timestamp: i64) {
+        self.user_cooldowns.insert((guild_id, user_id), timestamp);
     }
 }
