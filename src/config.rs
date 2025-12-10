@@ -67,10 +67,16 @@ impl Config {
         self.cooldowns.get(&guild_id).copied().unwrap_or(3600)
     }
     
-    /// Checks if a user is on cooldown. Returns None if not on cooldown,
+    /// Checks if a user is on cooldown. Returns None if not on cooldown (or cooldown is disabled),
     /// or Some(seconds_remaining) if still on cooldown.
+    /// When cooldown is set to 0, it is effectively disabled and always returns None.
     pub fn check_cooldown(&self, guild_id: GuildId, user_id: UserId, current_time: i64) -> Option<i64> {
         let cooldown_seconds = self.get_cooldown(guild_id) as i64;
+        
+        // Cooldown of 0 means disabled
+        if cooldown_seconds == 0 {
+            return None;
+        }
         
         if let Some(&last_submission) = self.user_cooldowns.get(&(guild_id, user_id)) {
             let time_elapsed = current_time - last_submission;
