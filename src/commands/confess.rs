@@ -120,7 +120,7 @@ async fn send_confession_logic<'a>(
         .description(confession_content)
         .color(Color::from_rgb(255, 165, 0)) // Orange color
         .footer(CreateEmbedFooter::new("Confessions"));
-    
+
     // Add categories field if provided
     if let Some(ref cats) = categories {
         if !cats.is_empty() {
@@ -220,7 +220,7 @@ pub async fn handle_modal_submission<'a>(
         .as_ref()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
-    
+
     let reply = send_confession_logic(
         interaction
             .guild_id

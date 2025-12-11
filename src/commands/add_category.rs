@@ -31,7 +31,7 @@ pub async fn add_category(
     let config_lock = data.config.clone();
 
     let mut config = config_lock.write().await;
-    
+
     // Get or create the categories vector for this guild
     let categories = config.categories.entry(guild_id).or_insert_with(Vec::new);
 
