@@ -27,7 +27,7 @@ use poise::{
 
 use commands::{confess, confessembed, set_confession_thread};
 use config::Config;
-use utils::{CONFESS_BUTTON_ID, ConfessionModal};
+use utils::{CONFESS_BUTTON_ID, REPLY_BUTTON_ID, ConfessionModal, ReplyModal};
 
 // --- Poise Types ---
 
@@ -145,6 +145,36 @@ async fn main() {
                                         confess::handle_modal_submission(
                                             &ctx,
                                             _data.config.clone(),
+                                            &modal_interaction,
+                                            data,
+                                        )
+                                        .await?;
+                                    }
+                                }
+                            } else if component.data.custom_id == REPLY_BUTTON_ID {
+                                let custom_id = component.id.to_string();
+                                component
+                                    .create_response(
+                                        ctx.http(),
+                                        ReplyModal::create(None, custom_id.clone()),
+                                    )
+                                    .await?;
+
+                                let response =
+                                    serenity::collector::ModalInteractionCollector::new(&ctx.shard)
+                                        .filter(move |modal_interaction| {
+                                            modal_interaction.data.custom_id == custom_id
+                                        })
+                                        .timeout(Duration::from_secs(3600))
+                                        .await;
+
+                                if let Some(modal_interaction) = response {
+                                    let data =
+                                        ReplyModal::parse(modal_interaction.data.clone());
+
+                                    if let Ok(data) = data {
+                                        confess::handle_reply_submission(
+                                            &ctx,
                                             &modal_interaction,
                                             data,
                                         )
