@@ -25,7 +25,7 @@ use poise::{
     serenity_prelude::{self as serenity, CacheHttp, GatewayIntents},
 };
 
-use commands::{confess, confessembed, set_confession_thread, add_category};
+use commands::{confess, confessembed, set_confession_thread, add_category, list_categories, remove_category};
 use config::Config;
 use utils::{CONFESS_BUTTON_ID, ConfessionModal};
 
@@ -116,6 +116,8 @@ async fn main() {
                 confessembed::confessembed(),
                 confess::confess(),
                 add_category::add_category(),
+                list_categories::list_categories(),
+                remove_category::remove_category(),
             ],
             event_handler: |ctx, event, _framework, _data| {
                 Box::pin(async move {
