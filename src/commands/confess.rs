@@ -14,6 +14,14 @@ use poise::{
 use serenity::{ChannelType, Color};
 use tokio::sync::RwLock;
 
+/// Helper function to process categories from modal data
+fn process_categories(categories: Option<String>) -> Option<String> {
+    categories
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
 /// Submit an anonymous confession.
 #[poise::command(
     slash_command,
@@ -39,10 +47,7 @@ pub async fn confess(ctx: ApplicationContext<'_, Data, Error>) -> Result<(), Err
         }
     };
     let confession_content = data.content.trim().to_string();
-    let categories = data.categories
-        .as_ref()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty());
+    let categories = process_categories(data.categories);
 
     // 2. Send the confession using the shared logic
     let reply = send_confession_logic(
@@ -216,10 +221,7 @@ pub async fn handle_modal_submission<'a>(
     data: ConfessionModal,
 ) -> Result<(), Error> {
     let confession_content = data.content.trim().to_string();
-    let categories = data.categories
-        .as_ref()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty());
+    let categories = process_categories(data.categories);
 
     let reply = send_confession_logic(
         interaction
