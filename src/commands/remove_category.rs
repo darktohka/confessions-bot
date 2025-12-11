@@ -59,7 +59,7 @@ pub async fn remove_category(
     // Save the updated configuration
     if let Err(e) = config.save().await {
         log::error!("Failed to save configuration: {:?}", e);
-        ctx.say(format!("Successfully removed category '{}' but failed to save configuration: {:?}", category_name, e)).await?;
+        ctx.say(format!("Successfully removed category '{}' but failed to save the configuration. Please contact a server administrator.", category_name)).await?;
         return Ok(());
     }
 

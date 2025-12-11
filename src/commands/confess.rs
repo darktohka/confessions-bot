@@ -14,7 +14,9 @@ use poise::{
 use serenity::{ChannelType, Color};
 use tokio::sync::RwLock;
 
-/// Helper function to process categories from modal data
+/// Helper function to process categories from modal data.
+/// Trims whitespace and filters out empty strings.
+/// Returns Some(trimmed_string) if the category is non-empty, None otherwise.
 fn process_categories(categories: Option<String>) -> Option<String> {
     categories
         .as_ref()
@@ -126,11 +128,9 @@ async fn send_confession_logic<'a>(
         .color(Color::from_rgb(255, 165, 0)) // Orange color
         .footer(CreateEmbedFooter::new("Confessions"));
 
-    // Add categories field if provided
+    // Add categories field if provided (process_categories already filters empty strings)
     if let Some(ref cats) = categories {
-        if !cats.is_empty() {
-            embed = embed.field("Categories", cats, false);
-        }
+        embed = embed.field("Categories", cats, false);
     }
 
     // 3. Create a new thread/post inside the target channel
