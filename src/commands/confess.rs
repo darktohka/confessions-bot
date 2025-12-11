@@ -14,9 +14,8 @@ use poise::{
 use serenity::{ChannelType, Color};
 use tokio::sync::RwLock;
 
-/// Helper function to process categories from modal data.
-/// Trims whitespace and filters out empty strings.
-/// Returns Some(trimmed_string) if the category is non-empty, None otherwise.
+/// Helper function to process the optional categories string from modal data.
+/// Trims whitespace and returns None if the result is empty.
 fn process_categories(categories: Option<String>) -> Option<String> {
     categories
         .map(|s| s.trim().to_string())

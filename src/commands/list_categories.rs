@@ -20,9 +20,14 @@ pub async fn list_categories(ctx: Context<'_>) -> Result<(), Error> {
 
     match config.categories.get(&guild_id) {
         Some(categories) if !categories.is_empty() => {
+            let category_list = categories
+                .iter()
+                .map(|c| format!("• {}", c))
+                .collect::<Vec<_>>()
+                .join("\n");
             ctx.say(format!(
                 "**Available categories for confessions:**\n{}",
-                categories.iter().map(|c| format!("• {}", c)).collect::<Vec<_>>().join("\n")
+                category_list
             )).await?;
         }
         _ => {
