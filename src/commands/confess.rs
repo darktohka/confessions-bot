@@ -19,7 +19,6 @@ use tokio::sync::RwLock;
 /// Returns Some(trimmed_string) if the category is non-empty, None otherwise.
 fn process_categories(categories: Option<String>) -> Option<String> {
     categories
-        .as_ref()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
 }
