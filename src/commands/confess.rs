@@ -39,6 +39,10 @@ pub async fn confess(ctx: ApplicationContext<'_, Data, Error>) -> Result<(), Err
         }
     };
     let confession_content = data.content.trim().to_string();
+    let categories = data.categories
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
 
     // 2. Send the confession using the shared logic
     let reply = send_confession_logic(
@@ -48,6 +52,7 @@ pub async fn confess(ctx: ApplicationContext<'_, Data, Error>) -> Result<(), Err
         ctx.data.config.clone(),
         &ctx.http(),
         confession_content,
+        categories,
     )
     .await;
 
@@ -64,6 +69,7 @@ async fn send_confession_logic<'a>(
     config: Arc<RwLock<Config>>,
     cache: &'a serenity::Http,
     confession_content: String,
+    categories: Option<String>,
 ) -> String {
     // 1. Log the confession for auditing
     // Use a hash of the author's ID to maintain anonymity
@@ -108,11 +114,19 @@ async fn send_confession_logic<'a>(
     let now: DateTime<Utc> = Utc::now();
     let thread_name = format!("Confession - {}", now.format("%Y-%m-%d %H:%M:%S UTC"));
 
-    let embed = CreateEmbed::new()
+    // Build the embed with optional categories
+    let mut embed = CreateEmbed::new()
         .title("Anonymous Confession")
         .description(confession_content)
         .color(Color::from_rgb(255, 165, 0)) // Orange color
         .footer(CreateEmbedFooter::new("Confessions"));
+    
+    // Add categories field if provided
+    if let Some(ref cats) = categories {
+        if !cats.is_empty() {
+            embed = embed.field("Categories", cats, false);
+        }
+    }
 
     // 3. Create a new thread/post inside the target channel
     let _new_thread_id = match channel_kind {
@@ -202,6 +216,11 @@ pub async fn handle_modal_submission<'a>(
     data: ConfessionModal,
 ) -> Result<(), Error> {
     let confession_content = data.content.trim().to_string();
+    let categories = data.categories
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    
     let reply = send_confession_logic(
         interaction
             .guild_id
@@ -210,6 +229,7 @@ pub async fn handle_modal_submission<'a>(
         config,
         ctx.http(),
         confession_content,
+        categories,
     )
     .await;
 

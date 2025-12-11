@@ -11,6 +11,9 @@ pub struct Config {
     pub discord_token: String,
     // Map of GuildId -> ChannelId (the thread where new confession threads are created)
     pub confession_threads: HashMap<GuildId, ChannelId>,
+    // Map of GuildId -> Vec<String> (categories available for confessions in each guild)
+    #[serde(default)]
+    pub categories: HashMap<GuildId, Vec<String>>,
 }
 
 impl Config {
@@ -23,6 +26,7 @@ impl Config {
             let default_config = Config {
                 discord_token: "YOUR_BOT_TOKEN_HERE".to_string(),
                 confession_threads: HashMap::new(),
+                categories: HashMap::new(),
             };
             default_config.save().await?;
             
