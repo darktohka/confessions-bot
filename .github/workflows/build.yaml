@@ -43,3 +43,11 @@ jobs:
           name: binary-aarch64
           path: |
             target/aarch64-unknown-linux-musl/release-lto/confessions-bot
+  keepalive:
+    name: Keep workflow alive
+    runs-on: ubuntu-slim
+    permissions:
+      actions: write
+    steps:
+      - name: Keep workflow alive
+        uses: darktohka/keepalive-workflow@v1
