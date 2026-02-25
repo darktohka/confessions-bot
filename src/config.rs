@@ -7,10 +7,26 @@ use tokio::fs;
 const CONFIG_FILE: &str = "config.json";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PendingConfession {
+    pub confession_id: String,
+    pub guild_id: GuildId,
+    pub author_hash: String,
+    pub content: String,
+    pub flagged_terms: Vec<String>,
+    pub timestamp: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub discord_token: String,
     // Map of GuildId -> ChannelId (the thread where new confession threads are created)
     pub confession_threads: HashMap<GuildId, ChannelId>,
+    // Blacklisted words/phrases per guild
+    #[serde(default)]
+    pub blacklist: HashMap<GuildId, Vec<String>>,
+    // Pending confessions waiting for moderator review
+    #[serde(default)]
+    pub pending_confessions: HashMap<String, PendingConfession>,
 }
 
 impl Config {
@@ -23,6 +39,8 @@ impl Config {
             let default_config = Config {
                 discord_token: "YOUR_BOT_TOKEN_HERE".to_string(),
                 confession_threads: HashMap::new(),
+                blacklist: HashMap::new(),
+                pending_confessions: HashMap::new(),
             };
             default_config.save().await?;
             

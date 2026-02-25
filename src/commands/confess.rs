@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use uuid::Uuid;
 
-use crate::{Data, Error, config::Config, logging::log_confession, utils::ConfessionModal};
+use crate::{Data, Error, config::{Config, PendingConfession}, logging::log_confession, utils::{ConfessionModal, check_blacklist}};
 use poise::{
     ApplicationContext, CreateReply, Modal,
     serenity_prelude::{
@@ -72,7 +73,46 @@ async fn send_confession_logic<'a>(
     let hash = format!("{:x}", Sha256::digest(&author.id.to_string()));
     log_confession(&hash, &confession_content);
 
-    // 2. Get the target channel ID and type from configuration
+    // 2. Check if confession contains blacklisted terms
+    let flagged_terms = {
+        let config = config.read().await;
+        let blacklist = config.blacklist.get(&guild_id);
+        
+        if let Some(blacklist) = blacklist {
+            check_blacklist(&confession_content, blacklist)
+        } else {
+            Vec::new()
+        }
+    };
+
+    // 3. If blacklisted terms found, flag for moderator review
+    if !flagged_terms.is_empty() {
+        let confession_id = format!("{}", Uuid::new_v4());
+        let pending = PendingConfession {
+            confession_id: confession_id.clone(),
+            guild_id,
+            author_hash: hash,
+            content: confession_content,
+            flagged_terms: flagged_terms.clone(),
+            timestamp: Utc::now().timestamp(),
+        };
+
+        let mut config = config.write().await;
+        config.pending_confessions.insert(confession_id.clone(), pending);
+        
+        if let Err(e) = config.save().await {
+            log::error!("Failed to save pending confession: {:?}", e);
+            return "An error occurred while flagging your confession for review.".to_string();
+        }
+
+        return format!(
+            "Your confession has been flagged for moderator review because it contains blacklisted terms: {}. A moderator will review it before it's posted. Confession ID: `{}`",
+            flagged_terms.join(", "),
+            confession_id
+        );
+    }
+
+    // 4. Get the target channel ID and type from configuration
     let target_channel_id = {
         let config = config.read().await;
 
@@ -114,7 +154,7 @@ async fn send_confession_logic<'a>(
         .color(Color::from_rgb(255, 165, 0)) // Orange color
         .footer(CreateEmbedFooter::new("Confessions"));
 
-    // 3. Create a new thread/post inside the target channel
+    // 5. Create a new thread/post inside the target channel
     let _new_thread_id = match channel_kind {
         ChannelType::Text | ChannelType::PublicThread | ChannelType::PrivateThread => {
             // Create a thread in a Text channel or a sub-thread in an existing thread
@@ -138,7 +178,7 @@ async fn send_confession_logic<'a>(
                 }
             };
 
-            // 4. Send the anonymous confession embed to the new thread
+            // 6. Send the anonymous confession embed to the new thread
             match new_thread
                 .send_message(cache, CreateMessage::new().embed(embed))
                 .await
@@ -186,7 +226,7 @@ async fn send_confession_logic<'a>(
         }
     };
 
-    // 5. Acknowledge the submission
+    // 7. Acknowledge the submission
     format!(
         "Your anonymous confession has been submitted! See the new post/thread in {}.",
         target_channel_id.mention()

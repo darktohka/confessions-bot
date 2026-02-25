@@ -8,6 +8,8 @@ A Discord bot written in Rust using the `poise` framework for anonymous confessi
 - Confessions are posted in dedicated threads.
 - Supports both slash commands and a confession button.
 - Audit logging with size-based rotation (10MB limit).
+- Blacklist system to flag confessions containing specific words/phrases for moderator review.
+- Moderator review queue for flagged confessions.
 
 ## Setup and Configuration
 
@@ -31,11 +33,43 @@ When the bot runs for the first time, it will create a default `config.json` fil
 
 The bot registers the following slash commands:
 
-| Command                  | Description                                                    | Usage                              |
-| :----------------------- | :------------------------------------------------------------- | :--------------------------------- |
-| `/set_confession_thread` | Sets the channel where new confession threads will be created. | `/set_confession_thread <channel>` |
-| `/confess`               | Opens a modal for anonymous confession submission.             | `/confess`                         |
-| `/confessembed`          | Creates an embed with a button that can open the modal         | `/confessembed`                    |
+| Command                         | Description                                                           | Usage                                   |
+| :------------------------------ | :-------------------------------------------------------------------- | :-------------------------------------- |
+| `/set_confession_thread`        | Sets the channel where new confession threads will be created.        | `/set_confession_thread <channel>`      |
+| `/confess`                      | Opens a modal for anonymous confession submission.                    | `/confess`                              |
+| `/confessembed`                 | Creates an embed with a button that can open the modal                | `/confessembed`                         |
+| `/blacklist add`                | Add a word or phrase to the blacklist (requires Manage Messages)      | `/blacklist add <term>`                 |
+| `/blacklist remove`             | Remove a word or phrase from the blacklist (requires Manage Messages) | `/blacklist remove <term>`              |
+| `/blacklist list`               | List all blacklisted terms (requires Manage Messages)                 | `/blacklist list`                       |
+| `/review_confession list`       | List all pending confessions flagged for review                       | `/review_confession list`               |
+| `/review_confession approve`    | Approve and post a flagged confession (requires Manage Messages)      | `/review_confession approve <id>`       |
+| `/review_confession reject`     | Reject and remove a flagged confession (requires Manage Messages)     | `/review_confession reject <id>`        |
+
+### 3. Blacklist Feature
+
+Administrators can configure a blacklist of words or phrases that should trigger moderator review before a confession is posted publicly.
+
+**How it works:**
+1. Use `/blacklist add` to add terms that should be flagged (case-insensitive matching)
+2. When a user submits a confession containing any blacklisted terms, it will be flagged for review instead of being posted immediately
+3. The user receives a notification that their confession is pending review
+4. Moderators can use `/review_confession list` to see all pending confessions
+5. Moderators can approve confessions with `/review_confession approve` to post them, or reject them with `/review_confession reject` to remove them from the queue
+
+**Example workflow:**
+```
+/blacklist add inappropriate_word
+/blacklist add "multi word phrase"
+/blacklist list
+```
+
+When a confession contains a blacklisted term, the submitter will see:
+```
+Your confession has been flagged for moderator review because it contains blacklisted terms: inappropriate_word. 
+A moderator will review it before it's posted. Confession ID: `abc-123-def`
+```
+
+Moderators can then review and approve/reject the confession.
 
 ## Running the Bot
 
