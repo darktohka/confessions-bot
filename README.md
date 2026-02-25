@@ -7,6 +7,7 @@ A Discord bot written in Rust using the `poise` framework for anonymous confessi
 - Anonymous confession submission.
 - Confessions are posted in dedicated threads.
 - Supports both slash commands and a confession button.
+- **Anonymous replies within threads**: Each confession includes a "Reply Anonymously" button for anonymous discussion.
 - Audit logging with size-based rotation (10MB limit).
 
 ## Setup and Configuration
@@ -36,6 +37,16 @@ The bot registers the following slash commands:
 | `/set_confession_thread` | Sets the channel where new confession threads will be created. | `/set_confession_thread <channel>` |
 | `/confess`               | Opens a modal for anonymous confession submission.             | `/confess`                         |
 | `/confessembed`          | Creates an embed with a button that can open the modal         | `/confessembed`                    |
+
+### 3. Anonymous Replies
+
+Each confession posted includes a "Reply Anonymously" button. Users can:
+- Click the button to open a modal for submitting an anonymous reply
+- Post replies directly in the confession thread
+- Maintain complete anonymity (replies are logged with a hashed user ID for abuse prevention)
+- Engage in anonymous discussions, support, or advice-giving related to the confession
+
+All anonymous replies are visually distinct from the original confession and are logged for moderation purposes.
 
 ## Running the Bot
 

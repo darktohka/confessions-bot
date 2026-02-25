@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
-use crate::{Data, Error, config::Config, logging::log_confession, utils::ConfessionModal};
+use crate::{Data, Error, config::Config, logging::log_confession, utils::{ConfessionModal, ReplyModal, REPLY_BUTTON_ID}};
 use poise::{
     ApplicationContext, CreateReply, Modal,
     serenity_prelude::{
@@ -11,7 +11,7 @@ use poise::{
         CreateMessage, CreateThread, GuildId, Mentionable, ModalInteraction,
     },
 };
-use serenity::{ChannelType, Color};
+use serenity::{ButtonStyle, ChannelType, Color};
 use tokio::sync::RwLock;
 
 /// Submit an anonymous confession.
@@ -114,6 +114,15 @@ async fn send_confession_logic<'a>(
         .color(Color::from_rgb(255, 165, 0)) // Orange color
         .footer(CreateEmbedFooter::new("Confessions"));
 
+    // Create the reply button
+    let reply_button = serenity::CreateButton::new(REPLY_BUTTON_ID)
+        .label("Reply Anonymously")
+        .style(ButtonStyle::Primary);
+
+    let message = CreateMessage::new()
+        .embed(embed)
+        .components(vec![serenity::CreateActionRow::Buttons(vec![reply_button])]);
+
     // 3. Create a new thread/post inside the target channel
     let _new_thread_id = match channel_kind {
         ChannelType::Text | ChannelType::PublicThread | ChannelType::PrivateThread => {
@@ -140,7 +149,7 @@ async fn send_confession_logic<'a>(
 
             // 4. Send the anonymous confession embed to the new thread
             match new_thread
-                .send_message(cache, CreateMessage::new().embed(embed))
+                .send_message(cache, message.clone())
                 .await
             {
                 Ok(_) => new_thread.id,
@@ -160,7 +169,7 @@ async fn send_confession_logic<'a>(
             match target_channel_id
                 .create_forum_post(
                     cache,
-                    CreateForumPost::new(thread_name, CreateMessage::new().embed(embed))
+                    CreateForumPost::new(thread_name, message)
                         .auto_archive_duration(AutoArchiveDuration::ThreeDays),
                 )
                 .await
@@ -225,5 +234,66 @@ pub async fn handle_modal_submission<'a>(
         )
         .await?;
 
+    Ok(())
+}
+
+/// Handles the anonymous reply submission when triggered by the reply button.
+pub async fn handle_reply_submission<'a>(
+    ctx: &Context,
+    interaction: &ModalInteraction,
+    data: ReplyModal,
+) -> Result<(), Error> {
+    let reply_content = data.content.trim().to_string();
+    
+    // Get the channel ID where the reply button was clicked (the thread/forum post)
+    let thread_id = interaction.channel_id;
+    
+    // Log the reply for auditing (using hash of user ID for anonymity)
+    let hash = format!("{:x}", Sha256::digest(&interaction.user.id.to_string()));
+    log::warn!(
+        "Anonymous reply received: {} | Thread: {} | {}",
+        hash,
+        thread_id,
+        reply_content.replace('\n', " \\n ")
+    );
+    
+    // Create an anonymous reply embed
+    let embed = CreateEmbed::new()
+        .description(reply_content)
+        .color(Color::from_rgb(100, 149, 237)) // Cornflower blue
+        .footer(CreateEmbedFooter::new("Anonymous Reply"));
+    
+    // Send the reply to the thread
+    let result = thread_id
+        .send_message(
+            ctx.http(),
+            CreateMessage::new().embed(embed),
+        )
+        .await;
+    
+    let response_message = match result {
+        Ok(_) => "Your anonymous reply has been posted successfully!".to_string(),
+        Err(e) => {
+            log::error!(
+                "Failed to send anonymous reply in thread {}: {:?}",
+                thread_id,
+                e
+            );
+            "An error occurred while posting your reply. Please try again later.".to_string()
+        }
+    };
+    
+    // Respond to the interaction
+    interaction
+        .create_response(
+            &ctx.http,
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
+                    .content(response_message)
+                    .ephemeral(true),
+            ),
+        )
+        .await?;
+    
     Ok(())
 }
