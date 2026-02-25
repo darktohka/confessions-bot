@@ -10,4 +10,9 @@ pub struct ConfessionModal {
     #[paragraph]
     #[max_length = 2000]
     pub content: String,
+    
+    #[name = "Categories (Optional)"]
+    #[placeholder = "Enter categories separated by commas (e.g., Funny, Serious)"]
+    #[max_length = 200]
+    pub categories: Option<String>,
 }

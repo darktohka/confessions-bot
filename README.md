@@ -7,6 +7,8 @@ A Discord bot written in Rust using the `poise` framework for anonymous confessi
 - Anonymous confession submission.
 - Confessions are posted in dedicated threads.
 - Supports both slash commands and a confession button.
+- Confession categories/tags that can be selected when submitting.
+- Admin commands to manage available categories per guild.
 - Audit logging with size-based rotation (10MB limit).
 
 ## Setup and Configuration
@@ -20,22 +22,27 @@ When the bot runs for the first time, it will create a default `config.json` fil
 ```json
 {
   "discord_token": "YOUR_BOT_TOKEN_HERE",
-  "confession_threads": {}
+  "confession_threads": {},
+  "categories": {}
 }
 ```
 
 - **`discord_token`**: Replace `"YOUR_BOT_TOKEN_HERE"` with your actual Discord bot token.
 - **`confession_threads`**: This map is automatically managed by the bot and stores which channel ID is designated for new confession threads in each guild (server).
+- **`categories`**: This map is automatically managed by the bot and stores the available confession categories for each guild. Categories can be added/removed using the `/add_category` and `/remove_category` commands.
 
 ### 2. Bot Commands
 
 The bot registers the following slash commands:
 
-| Command                  | Description                                                    | Usage                              |
-| :----------------------- | :------------------------------------------------------------- | :--------------------------------- |
-| `/set_confession_thread` | Sets the channel where new confession threads will be created. | `/set_confession_thread <channel>` |
-| `/confess`               | Opens a modal for anonymous confession submission.             | `/confess`                         |
-| `/confessembed`          | Creates an embed with a button that can open the modal         | `/confessembed`                    |
+| Command                  | Description                                                                              | Usage                              |
+| :----------------------- | :--------------------------------------------------------------------------------------- | :--------------------------------- |
+| `/set_confession_thread` | Sets the channel where new confession threads will be created.                           | `/set_confession_thread <channel>` |
+| `/confess`               | Opens a modal for anonymous confession submission.                                       | `/confess`                         |
+| `/confessembed`          | Creates an embed with a button that can open the modal                                   | `/confessembed`                    |
+| `/add_category`          | Adds a category/tag that users can select when submitting confessions. (Admin only)      | `/add_category <category_name>`    |
+| `/list_categories`       | Lists all available categories/tags for confessions in this guild.                       | `/list_categories`                 |
+| `/remove_category`       | Removes a category/tag from the available confession categories. (Admin only)            | `/remove_category <category_name>` |
 
 ## Running the Bot
 
