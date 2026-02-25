@@ -65,14 +65,40 @@ async fn send_confession_logic<'a>(
     cache: &'a serenity::Http,
     confession_content: String,
 ) -> String {
-    // 1. Log the confession for auditing
+    // 1. Check cooldown
+    let current_time = Utc::now().timestamp();
+    {
+        let config_read = config.read().await;
+        if let Some(seconds_remaining) = config_read.check_cooldown(guild_id, author.id, current_time) {
+            let minutes = seconds_remaining / 60;
+            let seconds = seconds_remaining % 60;
+            
+            if minutes > 0 {
+                return format!(
+                    "You must wait {} minute{} and {} second{} before submitting another confession.",
+                    minutes,
+                    if minutes == 1 { "" } else { "s" },
+                    seconds,
+                    if seconds == 1 { "" } else { "s" }
+                );
+            } else {
+                return format!(
+                    "You must wait {} second{} before submitting another confession.",
+                    seconds,
+                    if seconds == 1 { "" } else { "s" }
+                );
+            }
+        }
+    }
+    
+    // 2. Log the confession for auditing
     // Use a hash of the author's ID to maintain anonymity
     // This allows tracking of multiple requests from the same user without revealing their identity
     // in case they abuse the system in any way
     let hash = format!("{:x}", Sha256::digest(&author.id.to_string()));
     log_confession(&hash, &confession_content);
 
-    // 2. Get the target channel ID and type from configuration
+    // 3. Get the target channel ID and type from configuration
     let target_channel_id = {
         let config = config.read().await;
 
@@ -186,7 +212,13 @@ async fn send_confession_logic<'a>(
         }
     };
 
-    // 5. Acknowledge the submission
+    // 5. Record the submission time
+    {
+        let mut config_write = config.write().await;
+        config_write.record_submission(guild_id, author.id, current_time);
+    }
+    
+    // 6. Acknowledge the submission
     format!(
         "Your anonymous confession has been submitted! See the new post/thread in {}.",
         target_channel_id.mention()
